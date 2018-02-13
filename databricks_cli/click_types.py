@@ -21,7 +21,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from click import ParamType
+from click import ParamType, Option, UsageError
 
 
 class OutputClickType(ParamType):
@@ -65,3 +65,27 @@ class ClusterIdClickType(ParamType):
     name = 'CLUSTER_ID'
     help = ('Can be found in the URL at '
             'https://*.cloud.databricks.com/#/setting/clusters/$CLUSTER_ID/configuration.')
+
+
+class MutuallyExclusiveOption(Option):
+    """
+    Adapted from https://gist.github.com/jacobtolar/fb80d5552a9a9dfc32b12a829fa21c0c.
+    """
+    def __init__(self, *args, **kwargs):
+        self.mutually_exclusive = kwargs.pop('mutually_exclusive', [])
+        super(MutuallyExclusiveOption, self).__init__(*args, **kwargs)
+
+    def handle_parse_result(self, ctx, opts, args):
+        cleaned_opts = set([o.replace('_', '-') for o in opts.keys()])
+        cleaned_name = self.name.replace('_', '-')
+        if len(set(self.mutually_exclusive).intersection(cleaned_opts)) > 1:
+            other_opts = [opt for opt in self.mutually_exclusive if opt != cleaned_name]
+            raise UsageError(
+                'Illegal usage: `{}` is mutually exclusive with '
+                'arguments {}.'.format(cleaned_name, other_opts)
+            )
+        elif set(self.mutually_exclusive).isdisjoint(cleaned_opts):
+            missing_options = ['--{}'.format(o) for o in self.mutually_exclusive]
+            raise UsageError('Missing one of {}.'.format(missing_options))
+
+        return super(MutuallyExclusiveOption, self).handle_parse_result(ctx, opts, args)

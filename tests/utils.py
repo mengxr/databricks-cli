@@ -31,3 +31,7 @@ def provide_conf(test):
         conf.overwrite()
         return test(*args, **kwargs)
     return decorator.decorator(wrapper, test)
+
+
+def output_equals(actual, expected):
+    return actual == expected + '\n'
